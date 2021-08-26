@@ -1,0 +1,207 @@
+FORMAT: 1A
+HOST: http://localhost:5000
+
+
+## Projeto prático 2: Replicação primário e secundários
+
+
+## Replicas  [/replicas]
+
+### Carregar réplicas na memória [POST]
+
+Ao invocar essa funcionalidade, o processo em questão será definido como coordenador.
+Sendo assim, você terá em execução 3 processos que implementam a mesma API RESTful,
+mas de somente um deles você poderá invocar essa funcionalidade. Isso é uma limitação
+deste exemplo que visa simular o 2PC e na prática não teríamos tal funcionalidade.
+
+
++ id (string) - Id da replica
++ endpoint (string) - Endereço para enviar requisições a replica
+
+
++ Request (application/json)
+
+        {"replicas" : [
+            {
+                "id" : "replica 1",
+                "endpoint" : "http://localhost:5001"},
+                {"id" : "replica 2",
+                "endpoint" : "http://localhost:5002"}
+            ]
+        }
+
++ Response 201 (application/json)
+
+        {
+          "resultado": true
+        }
+
+
+### Listar todas as réplicas que foram salvas em memória [GET]
+
++ Response 200 (application/json)
+
+        [
+          {
+            "endpoint": "http://localhost:5001",
+            "id": "replica 1"
+          },
+          {
+            "endpoint": "http://localhost:5002",
+            "id": "replica 2"
+          }
+        ]
+
+
+### Deletar as réplicas salvas em memória [DELETE]
+
++ Response 200 (application/json)
+
+        {
+          "resultado": true
+        }
+        
+
+## Conta  [/contas]
+
+### Listar as contas armazenadas em memória [GET]
+
+
++ response 200 (application/json)
+
+        [
+              {
+                "conta": 1234,
+                "saldo": 100
+              },
+              {
+                "conta": 4345,
+                "saldo": 50
+              },
+              {
+                "conta": 5678,
+                "saldo": 250
+              }
+        ]
+
+
+## Acoes [/acoes]
+
+### Realizar uma ação [POST]
+
+
+A ação poderá ser um saque (débito) ou depósito (crédito) de uma quantia em uma determinada conta
+
+* Se o processo for coordenador, então esse deverá persistir os dados na área de
+armazenamento temporário (write-ahead log) e invocar essa funcionalidade “Enviar ação”
+das réplicas e depois retornar o código HTTP 201 Created para representar a mensagem
+success do 2PC ou HTTP 403 Forbidden para representar a mensagem fail do 2PC. Em
+caso de sucesso, deve-se persistir os dados da ação de forma permanente.
+
+* Se o processo for réplica, então esse deverá persistir os dados na área de armazenamento temporário (write-ahead log) e deverá retornar o código HTTP 200 OK para
+representar a mensagem yes do 2PC ou o código HTTP 403 Forbidden para representar
+a mensagem no do 2PC. Faça um sorteio com Random para determinar se a resposta será
+yes ou no. A probabilidade de retornar yes deverá ser de 70%.
+
++ id (string) - Id único da ação
++ operacao (string) - débito ou crédito
++ conta (int) - Conta em que será realizado a ação
++ valor (float) - Saldo disponível na conta
+
++ request (application/json)
+
+    
+        {
+            "id" : "7c40d404-481c-47fd-98c4-50d307fcee47",
+            "operacao" : "debito",
+            "conta" : 1234,
+            "valor" : 15.00
+        }
+        
+
++ Response 201 (application/json)
+
+        {
+          "resultado": true
+        }
+        
++ Response 403 (application/json)
+
+        {
+          "resultado": false
+        }
+
+
+## Historico  [/historico]
+
+### Listar o histórico de ações que foram processadas [GET]
+
+
++ response 200 (application/json)
+
+         [
+             {
+             "id" : "19148f6d-1318-4887-b2b6-215bfc8ac35f",
+             "status" : "success"
+             },
+             {
+             "id" : "0fcf8b5f-622b-4923-81c4-43b1753e403f",
+             "status" : "fail"
+             }
+         ]
+
+## Semente  [/semente]
+
+### Semente do gerador de números pseudo aleatórios  [POST]
+
+Deverá receber um número inteiro em um documento JSON que deverá
+ser usado como semente do gerador de números pseudo aleatórios, que é usado quando o
+processo for uma réplica durante a fase de votação
+
++ seed (int) - Valor da semente a ser utilizada 
+
+
++ Request (application/json)
+
+        {
+            "seed" : 123456
+        }
+        
+
++ Response 201 (application/json)
+
+        {
+            "resultado": true
+        }
+        
+## Decisao [/decisao] 
+
+Poderá ser consumido somente com o verbo HTTP PUT para representar a
+mensagem commit do 2PC ou com o verbo HTTP DELETE para representar a mensagem rollback
+do 2PC. Deve-se aqui fornecer um documento JSON contendo o identificador único da ação.
+Exemplo:
+
+### Realizar o commit da ação [PUT]
+
+
++ Request (application/json)
+
+        {
+          "id" : "19148f6d-1318-4887-b2b6-215bfc8ac35f"
+        }
+
+        
++ Response 200 (application/json)
+
+        {
+            "resultado": true
+        }
+
+### Realizar rollback da ação [DELETE]
+
++ Response 200 (application/json)
+
+        {
+          "resultado": true
+        }
+        
