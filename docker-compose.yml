@@ -1,0 +1,43 @@
+version: "3"
+
+services:
+  replica1:
+    container_name: replica1
+    build: .
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./app:/app
+    environment:
+      FLASK_ENV: development
+      PYTHONUNBUFFERED: 1
+    command: python app.py 5001 replica1
+
+  replica2:
+    container_name: replica2
+    build: .
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./app:/app
+    environment:
+      FLASK_ENV: development
+      PYTHONUNBUFFERED: 1
+    command: python app.py 5002 replica2
+
+  replica3:
+    container_name: replica3
+    build: .
+    ports:
+      - "5003:5003"
+    volumes:
+      - ./app:/app
+    environment:
+      FLASK_ENV: development
+      PYTHONUNBUFFERED: 1
+    command: python app.py 5003 replica3
+    
+
+
+
+  
