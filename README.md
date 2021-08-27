@@ -1,4 +1,4 @@
-## ## Projeto prático 2: Replicação primário e secundários
+## Projeto prático 2: Replicação primário e secundários
 
 <!--ts-->
    * [Projeto proposto](#Projeto-proposto-e-solução)
@@ -44,7 +44,7 @@ Com os containers rodando, pode-se efetuar alguns exemplos descritos abaixo.
 
 Carregar réplicas
 ```shell
-curl -X POST http://127.0.0.1:5001/replicas -H "Content-Type: application/json" -d '{"replicas" : [{"id" : "replica 1","endpoint" : "http://localhost:5001"},{"id" : "replica 2","endpoint" : "http://localhost:5002"}]}'
+curl -X POST http://127.0.0.1:5001/replicas -H "Content-Type: application/json" -d '{"replicas" : [{"id" : "replica 1","endpoint" : "http://replica2:5002"},{"id" : "replica 2","endpoint" : "http://replica3:5003"}]}'
 ```
 
 Enviar uma ação de débito para conta 1234 com valor 15
@@ -57,9 +57,19 @@ Enviar uma ação de credito para conta 1234 com valor 50
 curl -X POST http://127.0.0.1:5001/acoes -H "Content-Type: application/json" -d '{"id" : "7c40d404-481c-47fd-98c4-50d307fcee47","operacao" : "credito","conta" : 1234,"valor" : 50.00}'
 ```
 
-Listar as contas salvas em memória
+Listar as contas salvas em memória da replica1
 ```shel
 curl http://127.0.0.1:5001/contas
+```
+
+Listar as contas salvas em memória da replica2
+```shel
+curl http://127.0.0.1:5002/contas
+```
+
+Listar as contas salvas em memória da replica3
+```shel
+curl http://127.0.0.1:5003/contas
 ```
 
 Listar replicas carregadas
@@ -79,7 +89,7 @@ curl http://localhost:5001/historico
 
 Semente do gerador de números pseudo aleatórios
 ```shell
-curl -X POST http://127.0.0.1:5001/replicas -H "Content-Type: application/json" -d '{"seed": 123456}'
+curl -X POST http://127.0.0.1:5001/semente -H "Content-Type: application/json" -d '{"seed": 123456}'
 ```
 
 
