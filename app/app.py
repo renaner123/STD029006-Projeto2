@@ -57,8 +57,9 @@ class dados:
     def getCoordenador(self):
         return self.coordenador
 
-    def setHistico(self, id, status):
-        self.historicoAcoes.append({'id':id, 'status': status})
+    def setHistico(self, id, status): 
+        if(self.checkId(id)):      
+            self.historicoAcoes.append({'id':id, 'status': status})
 
     def getHistico(self):
         return self.historicoAcoes
@@ -77,6 +78,16 @@ class dados:
 
     def getSemente(self):
         return self.semente
+
+    def checkId(self,id):
+        aux = 0
+        for result in self.getHistico():
+            if(result['id']==id):
+                aux = aux +1
+                return False
+        if(aux==0):
+            return True
+        aux = 0
 
 
 aux = dados()
@@ -137,52 +148,53 @@ def listar_historico():
 @app.route('/acoes', methods=['POST'])
 def enviar_Acao():
 
-    aux.setDadosTemporario(request.json['id'], request.json)
+    if(aux.checkId(request.json['id'])):
+        aux.setDadosTemporario(request.json['id'], request.json)
 
-    if (aux.getCoordenador()):
-        yes = 0
-        no = 0
-        ack = 0
+        if (aux.getCoordenador()):
+            yes = 0
+            no = 0
+            ack = 0
 
-        for resultado in aux.getReplicas():
-            res = requests.post(resultado['endpoint'] + '/' + 'acoes', json=request.json)
-            if (res.status_code == 200):
-                yes = yes + 1
-            elif (res.status_code == 403):
-                no = no + 1
-        if (yes == 2):
-            persistirDados(aux.getDadosTemporario()[request.json['id']])
-            aux.removeDadoTemporario(request.json['id'])
             for resultado in aux.getReplicas():
-                res = requests.put(resultado['endpoint'] + '/' + 'decisao', json={'id': request.json['id']})
+                res = requests.post(resultado['endpoint'] + '/' + 'acoes', json=request.json)
                 if (res.status_code == 200):
-                    ack = ack + 1
-            if (ack == 2):
-                aux.setHistico(request.json['id'], "success")
-                return jsonify({'resultado': True}), 201
-            else:
-                aux.setHistico(request.json['id'], "fail")
-                return jsonify({'resultado': False}), 403
+                    yes = yes + 1
+                elif (res.status_code == 403):
+                    no = no + 1
+            if (yes == 2):
+                persistirDados(aux.getDadosTemporario()[request.json['id']])
+                aux.removeDadoTemporario(request.json['id'])
+                for resultado in aux.getReplicas():
+                    res = requests.put(resultado['endpoint'] + '/' + 'decisao', json={'id': request.json['id']})
+                    if (res.status_code == 200):
+                        ack = ack + 1
+                if (ack == 2):
+                    aux.setHistico(request.json['id'], "success")
+                    return jsonify({'resultado': True}), 201
+                else:
+                    aux.setHistico(request.json['id'], "fail")
+                    return jsonify({'resultado': False}), 403
 
-        else:
-            aux.removeDadoTemporario(request.json['id'])
-            for resultado in aux.getReplicas():
-                res = requests.delete(resultado['endpoint'] + '/' + 'decisao', json={'id': request.json['id']})
-                if (res.status_code == 200):
-                    ack = ack + 1
-            if (ack == 2):
-                aux.setHistico(request.json['id'], "fail")
-                return jsonify({'resultado': False}), 403
             else:
-                aux.setHistico(request.json['id'], "fail")
-                return jsonify({'resultado': False}), 403
-    else:
-        prob = randint(0, 10)
-        if (prob >= 3):
-            return jsonify({'resultado': True}), 200
+                aux.removeDadoTemporario(request.json['id'])
+                for resultado in aux.getReplicas():
+                    res = requests.delete(resultado['endpoint'] + '/' + 'decisao', json={'id': request.json['id']})
+                    if (res.status_code == 200):
+                        ack = ack + 1
+                if (ack == 2):
+                    aux.setHistico(request.json['id'], "fail")
+                    return jsonify({'resultado': False}), 403
+                else:
+                    aux.setHistico(request.json['id'], "fail")
+                    return jsonify({'resultado': False}), 403
         else:
-            return jsonify({'resultado': True}), 403
-
+            prob = randint(0, 10)
+            if (prob >= 3):
+                return jsonify({'resultado': True}), 200
+            else:
+                return jsonify({'resultado': False}), 403
+    return jsonify({'resultado': "ID ja foi usada"}), 403
 
 @app.route('/decisao', methods=['PUT', 'DELETE','POST'])
 def enviar_decisao():
@@ -193,10 +205,13 @@ def enviar_decisao():
             validaAcao = persistirDados(aux.getDadosTemporario()[request.json['id']])
             aux.removeDadoTemporario(request.json['id'])
             if(validaAcao == 201):
+                aux.setHistico(request.json['id'], "success")
                 return jsonify({'resultado': True}), 200
             else:
+                aux.setHistico(request.json['id'], "fail")
                 return jsonify({'resultado': True}), 403
         elif(request.method == 'DELETE'):
+            aux.setHistico(request.json['id'], "fail")
             aux.removeDadoTemporario(request.json['id'])
             return jsonify({'resultado': True}), 200
         else:
@@ -205,6 +220,7 @@ def enviar_decisao():
 
 @app.route('/persistir', methods=['PUT', 'DELETE'])
 def persistirDados(dados):
+    
     resultado = [resultado for resultado in aux.getContas() if resultado['conta'] == dados['conta']]
     if len(resultado) == 0:
         abort(404)
@@ -218,7 +234,7 @@ def persistirDados(dados):
         abort(400)
 
     if (dados['operacao'] == 'debito'):
-        if ((resultado[0]['saldo'] - dados['valor']) > 0):
+        if ((resultado[0]['saldo'] - dados['valor']) >= 0):
             resultado[0]['saldo'] = (resultado[0]['saldo'] - dados['valor'])
             return 201
         else:
@@ -226,8 +242,6 @@ def persistirDados(dados):
     elif (dados['operacao'] == 'credito'):
         resultado[0]['saldo'] = resultado[0]['saldo'] + dados['valor']
         return 201
-
-
 
 @app.route('/semente', methods=['POST'])
 def carregar_semente():
