@@ -1,3 +1,5 @@
+[![Docker Image CI](https://github.com/renaner123/STD029006-Projeto2/actions/workflows/docker-image.yml/badge.svg?branch=main)](https://github.com/renaner123/STD029006-Projeto2/actions/workflows/docker-image.yml)
+
 ## Projeto prático 2: Replicação primário e secundários
 
 <!--ts-->
